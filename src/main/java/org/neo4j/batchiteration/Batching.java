@@ -59,30 +59,25 @@ public class Batching {
 
         int numberOfProcessors = Runtime.getRuntime().availableProcessors();
         final BlockingQueue<List<Node>> queue = new LinkedBlockingQueue<>(numberOfProcessors);
-        final AtomicBoolean notPoisoned = new AtomicBoolean(true);
+        final AtomicBoolean poisoned = new AtomicBoolean(false);
 
         List<Thread> threads = new ArrayList<>(numberOfProcessors);
         for (int i=0; i<numberOfProcessors; i++) {
             Thread thread = new Thread(() -> {
                 try {
-                    while (notPoisoned.get()) {
+                    while ((poisoned.get()==false) || (!queue.isEmpty())) {
                         List<Node> page = queue.take();
-                        if (page.equals(POISON)) {
-                            log("poison detected");
-                            notPoisoned.set(false);
-                        } else {
-                            try (Transaction tx = db.beginTx()) {
-                                for (Node node: page) {
-                                    Label origLabel = node.getLabels().iterator().next();
-                                    String newLabel = String.format("%s_%s", origLabel.name(), node.getProperty("username"));
-                                    node.addLabel(Label.label(newLabel));
-                                    node.removeLabel(origLabel);
-                                }
-                                tx.success();
+                        try (Transaction tx = db.beginTx()) {
+                            for (Node node : page) {
+                                Label origLabel = node.getLabels().iterator().next();
+                                String newLabel = String.format("%s_%s", origLabel.name(), node.getProperty("username"));
+                                node.addLabel(Label.label(newLabel));
+                                node.removeLabel(origLabel);
                             }
-                            sleep(1000);
-                            log("done with processing page");
+                            tx.success();
                         }
+                        sleep(1000);
+                        log("done with processing page");
                     }
                     log("being poisoned, terminating thread");
                 } catch (InterruptedException e) {
@@ -99,11 +94,10 @@ public class Batching {
         while (pagingIterator.hasNext()) {
             final Iterator<Node> page = pagingIterator.nextPage();
             final List<Node> materializedPage = Iterators.asList(page);
-
             queue.put(materializedPage);
             log("done with submitting page, queue size is " + queue.size());
         }
-        queue.put(POISON);
+        poisoned.set(true);
         log("fully done submitting, poison sent");
         for (Thread thread : threads) {
             thread.join();

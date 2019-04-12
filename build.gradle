@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'maven'
+}
+
+idea {
+    project {
+        ext.jdkName = '1.8'
+        ext.languageLevel = '1.8'
+    }
+}
+
+repositories {
+    jcenter()
+}
+
+sourceCompatibility=JavaVersion.VERSION_1_8
+targetCompatibility=JavaVersion.VERSION_1_8
+
+ext {
+    neo4jVersion = "3.5.3"
+    neo4jClientVersion = "1.7.2"
+}
+
+dependencies {
+    compile group: 'org.neo4j', name: 'neo4j-kernel', version: neo4jVersion
+    compile group: 'org.neo4j', name: 'neo4j-lucene-index', version: neo4jVersion
+
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'org.neo4j.test', name: 'neo4j-harness', version: neo4jVersion
+    testCompile group: 'org.neo4j', name: 'neo4j-logging', version: neo4jVersion, classifier: "tests"
+    testCompile group: 'org.hamcrest', name: 'hamcrest-core', version: '1.3'
+    testCompile group: 'org.hamcrest', name: 'hamcrest-library', version: '1.3'
+    testCompile "org.neo4j.driver:neo4j-java-driver:$neo4jClientVersion"
+    testCompile group: 'org.neo4j.community', name: 'it-test-support', version: neo4jVersion
+
+}
+
+version = "0.1"
+group = "org.neo4j.batchiteration"
+
+test {
+    systemProperties 'user.language': 'en', 'user.country': 'US'
+    testLogging {
+        exceptionFormat = 'full'
+    }
+}
